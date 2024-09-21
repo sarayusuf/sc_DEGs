@@ -1,0 +1,1147 @@
+---
+title: "differential genes in lupus single cell seq"
+author: "sara yusuf"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+
+
+
+
+
+```{r}
+library(Seurat , verbose = F)
+library(tidyverse, verbose = F)
+library(ExperimentHub, verbose = F)
+library(metap, verbose = F)
+library(multtest, verbose = F)
+library(SingleCellExperiment, verbose = F)
+library(DESeq2)
+library(MAST)
+```
+
+
+```{r}
+# get data
+eh <- ExperimentHub()
+query(eh, "Kang")
+
+sce <- eh[["EH2259"]]
+seu.obj <- as.Seurat(sce, data = NULL)
+
+head(seu.obj@meta.data)
+
+```
+```{r}
+str(seu.obj)
+```
+
+
+
+
+
+```{r}
+# get mito percent
+seu.obj$mitoPercent <- PercentageFeatureSet(seu.obj, pattern = '^MT-')
+head(seu.obj@meta.data)
+
+# filter
+seu.filtered <- subset(seu.obj, subset = nFeature_originalexp > 200 & nFeature_originalexp < 2500 &
+         nCount_originalexp > 800 & 
+         mitoPercent < 5 &
+         multiplets == 'singlet')
+
+seu.obj
+seu.filtered
+```
+
+Purpose of FindVariableFeatures()
+
+1. Identify Key Genes:
+
+High Variability: The function helps identify genes with high variability in their expression levels across cells. These genes are often more useful for distinguishing biological differences between cells.
+Dimensionality Reduction: By focusing on these highly variable genes, you can reduce the dimensionality of the data, making it easier to perform clustering and visualization.
+
+2. Improve Clustering and Visualization:
+
+Clustering: Highly variable genes provide better input for clustering algorithms because they capture the most significant biological differences between cells.
+Visualization: Techniques like PCA (Principal Component Analysis) and t-SNE (t-Distributed Stochastic Neighbor Embedding) or UMAP (Uniform Manifold Approximation and Projection) benefit from focusing on variable genes for clearer separation of clusters.
+
+
+```{r}
+seu.filtered <- NormalizeData(seu.filtered)
+seu.filtered <- FindVariableFeatures(seu.filtered)
+seu.filtered <- ScaleData(seu.filtered)
+seu.filtered <- RunPCA(seu.filtered)
+```
+
+```{r}
+str(seu.filtered)
+```
+
+
+```{r}
+variablefeatures = VariableFeatures(seu.filtered)
+length(variablefeatures)
+```
+
+
+```{r}
+# Identify the 10 most highly variable genes
+top10 <- head(VariableFeatures(seu.filtered), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(seu.filtered)
+LabelPoints(plot = plot1, points = top10, repel = TRUE)
+
+
+```
+
+
+
+```{r}
+ElbowPlot(seu.filtered)
+
+```
+
+
+```{r}
+seu.filtered <- RunUMAP(seu.filtered, dims = 1:20)
+
+```
+
+
+```{r}
+# visualize 
+cell_plot <- DimPlot(seu.filtered, reduction = 'umap', group.by = 'cell', label = TRUE)
+cond_plot <- DimPlot(seu.filtered, reduction = 'umap', group.by = 'stim')
+
+cell_plot|cond_plot
+```
+
+
+Purpose of FindAllMarkers()
+
+1. Identify Cluster-Specific Markers:
+
+Cluster Markers: Helps in finding genes that are specifically expressed in individual clusters, which can be used to characterize and distinguish different cell types or states.
+Comparative Analysis: Assesses differential expression across all clusters, providing a comprehensive view of which genes are unique to each cluster.
+
+2. Understand Cellular Heterogeneity:
+
+Biological Insight: Provides insight into the molecular signatures of different cell populations, aiding in the interpretation of cellular heterogeneity.
+
+```{r}
+
+Idents(seu.filtered) = seu.filtered@meta.data$cell
+
+```
+
+
+```{r}
+# findAll markers 
+
+#FindAllMarkers(seu.filtered,
+             # logfc.threshold = 0.25,
+             #  min.pct = 0.1,
+             # only.pos = TRUE,
+             #  test.use = 'DESeq2',
+             #  slot = 'counts')
+
+```
+
+
+```{r}
+#save the variable 
+#save(all_markers, file = "all_markers.RData")
+
+
+#Loading the Variable from a File
+load("all_markers.RData")
+```
+
+
+```{r}
+# Identify top 10 markers for each cluster
+top10_all_markers <- all_markers %>% 
+  group_by(cluster) %>% 
+  top_n(n = 10, wt = avg_log2FC)
+
+
+
+
+# Plot heatmap 
+DoHeatmap(seu.filtered, features = unique(top10_all_markers$gene)) + 
+  NoLegend() + 
+  theme(legend.position = "bottom") + 
+  scale_fill_gradientn(colors = c("blue", "white", "red")) +
+  theme(legend.text = element_text(size = 5))
+
+```
+```{r}
+top10_all_markers <- top10_all_markers[!duplicated(top10_all_markers$gene), ]
+
+DotPlot(
+  seu.filtered,
+  top10_all_markers$gene,
+  assay = NULL,
+  cols = c("lightgrey", "red"),
+  col.min = -2.5,
+  col.max = 2.5,
+  dot.min = 0,
+  dot.scale = 6,
+  idents = NULL,
+  group.by = NULL,
+  split.by = NULL,
+  cluster.idents = FALSE,
+  scale = TRUE,
+  scale.by = "radius",
+  scale.min = NA,
+  scale.max = NA
+) + theme(axis.text.x = element_text(angle = 90, hjust = 1 , size = 5))
+
+```
+
+
+
+
+```{r}
+#Feature plot for top expressed gebes in each cell type genes
+
+FeaturePlot(seu.filtered, features = c("CD83", "NKG7" ,"HIST1H2AC","TXN"  ) , label = T)
+```
+
+
+
+```{r}
+DefaultAssay(seu.filtered) 
+
+
+```
+
+
+Purpose of FindConservedMarkers()
+
+1. Identify Stable Markers:
+
+Consistency Across Conditions: This function helps find markers that are consistently expressed in certain cell types or clusters regardless of experimental conditions or different datasets.
+Robust Features: Conserved markers are useful for understanding the core characteristics of cell types or states that are preserved across different biological contexts.
+
+2. Cross-Dataset Comparisons:
+
+Benchmarking: Allows comparison of markers across different datasets or experiments, which is valuable for validating findings and ensuring the robustness of identified markers.
+
+```{r}
+# findConserved markers for "CD14+ Monocytes"
+
+#markers_cluster <- FindConservedMarkers(seu.filtered,
+#                    ident.1 = "CD14+ Monocytes",
+#                     grouping.var = 'stim',
+#                      assay  =  "originalexp")
+                     
+```
+
+
+```{r}
+
+#save the variable 
+#save(markers_cluster, file = "markers_cluster.RData")
+
+#Loading the Variable from a File
+load("markers_cluster.RData")
+head(markers_cluster)
+
+```
+
+```{r}
+head(markers_cluster)
+```
+
+```{r}
+
+library(dplyr)
+
+filtered_con <- markers_cluster %>%
+  filter(minimump_p_val < 0.05 ) %>%
+  slice_head(n = 100)
+
+
+```
+
+
+```{r}
+Idents(seu.filtered) = seu.filtered$cell
+```
+
+
+
+```{r}
+DotPlot(
+  seu.filtered,
+  rownames(filtered_con),
+  assay = NULL,
+  cols = c("lightgrey", "red"),
+  col.min = -2.5,
+  col.max = 2.5,
+  dot.min = 0,
+  dot.scale = 6,
+  idents = NULL,
+  group.by = NULL,
+  split.by = NULL,
+  cluster.idents = FALSE,
+  scale = TRUE,
+  scale.by = "radius",
+  scale.min = NA,
+  scale.max = NA
+) + theme(axis.text.x = element_text(angle = 90, hjust = 1 , size = 5))
+
+```
+
+
+
+#visualize "TYROBP" gene 
+
+```{r}
+cell_plot <- DimPlot(seu.filtered, reduction = 'umap', group.by = 'cell', label = TRUE)
+cell_plot
+```
+
+
+```{r}
+FeaturePlot(seu.filtered, features = 'TYROBP', min.cutoff = 'q10')
+
+```
+
+
+
+
+```{r}
+# findMarkers between conditions 
+
+seu.filtered$celltype.cnd <- paste0(seu.filtered$cell,"_" ,seu.filtered$stim)
+Idents(seu.filtered) <- seu.filtered$celltype.cnd
+head(seu.filtered@meta.data)
+
+```
+
+
+```{r}
+DimPlot(seu.filtered, reduction = 'umap', label = TRUE)
+
+```
+
+
+
+ find markers differentiate CD14+ Monocytes_stim vs CD14+ Monocytes_ctrl using all listed methods
+
+```{r}
+
+# Define the list of test methods to compare
+#test_methods <- c("wilcox", "bimod", "t", "LR", "MAST", "DESeq2")
+
+# Create an empty list to store the results for each test
+#results_list <- list()
+
+#Loop through each test method and run FindMarkers
+#   for (test in test_methods) {
+     #Run FindMarkers with the current test method
+ #    markers <- FindMarkers(seu.filtered, 
+#                        ident.1 = 'CD14+ Monocytes_stim', 
+ #                       ident.2 = 'CD14+ Monocytes_ctrl', 
+ #                      test.use = test)
+  
+  # Store the results in the list with the test method as the name
+# results_list[[test]] <- markers
+#}
+
+
+```
+
+
+
+
+```{r}
+#save(markers, file = "markers.RData")
+
+#Loading the Variable from a File
+load("markers.RData")
+
+```
+
+```{r}
+load("results_list.RData")
+
+```
+
+
+
+
+```{r}
+
+
+
+# Loop through each element in markers_list and assign to a new data frame
+for (test in names(results_list)) {
+  assign(paste0("DEGs_", test), results_list[[test]])
+}
+
+```
+
+
+```{r}
+library(dplyr)
+
+# Combine all DEGs into one data frame with a method column
+combined <- do.call(rbind, lapply(names(results_list), function(test) {
+  df <- results_list[[test]]
+  df$method <- test  # Add method name as a new column
+  df
+}))
+
+
+library(ggplot2)
+
+# Choose a refined color palette
+color_palette <- c("#2E86C1", "#E74C3C", "#27AE60", "#8E44AD", "#F39C12", "#16A085", "#D35400", "#7F8C8D")
+
+# Create the box plot with enhanced aesthetics
+ggplot(combined, aes(x = method, y = -log10(p_val_adj), color = method)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.8, width = 0.6, lwd = 0.6) +  # Slightly thicker lines for boxes
+  geom_jitter(width = 0.2, size = 0.8, alpha = 0.6) +  # Smaller, more subtle jittered points
+  labs(title = "Distribution of Adjusted P-Values Across Methods",
+       subtitle = "A comparison of adjusted p-values for DEGs across different analysis methods",
+       x = "Method",
+       y = "Adjusted P-Value",
+       caption = "Log10 scale used for p-values. Each point represents a gene's adjusted p-value.") +
+  theme_classic(base_size = 14) +  # Classic theme with a base font size suitable for publication
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold", size = 12),  # Bold x-axis labels
+    axis.text.y = element_text(face = "bold", size = 12),  # Bold y-axis labels
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),  # Centered and bold title
+    plot.subtitle = element_text(hjust = 0.5, face = "italic", size = 12),  # Centered italic subtitle
+    legend.position = "none",  # Remove legend to avoid redundancy
+    panel.grid.major.y = element_line(color = "gray90", size = 0.3)  # Light grid lines for y-axis
+  ) +
+  scale_y_log10(labels = scales::scientific) +  # Log scale with scientific notation for p-values
+  scale_color_manual(values = color_palette)  # Apply the refined color palette
+
+
+```
+
+
+
+```{r}
+filter_degs <- function(df) {
+  df %>%
+    filter(p_val_adj < 0.05 & avg_log2FC > 2)
+}
+
+# Apply the filtering function to each data frame
+sig_wilcox <- filter_degs(DEGs_wilcox)
+sig_bimod <- filter_degs(DEGs_bimod)
+sig_t <- filter_degs(DEGs_t)
+sig_LR <- filter_degs(DEGs_LR)
+sig_MAST <- filter_degs(DEGs_MAST)
+sig_DESeq2 <- filter_degs(DEGs_DESeq2)
+```
+
+
+
+```{r}
+# List of significant markers
+sig_genes_list <- list(
+  "wilcox" = sig_wilcox,
+  "bimod" = sig_bimod,
+  "t" = sig_t,
+  "LR" = sig_LR,
+  "MAST" = sig_MAST,
+  "DESeq2" = sig_DESeq2
+)
+
+```
+
+
+
+
+
+
+
+
+```{r}
+# Loop through each element in sig_genes_list and write to a CSV file
+#for (list_name in names(results_list)) {
+  # Assign each list element to a data frame
+# df <- results_list[[list_name]]
+  
+ #Write the data frame to a CSV file
+ # write.csv(df, file = paste0("sig_", list_name, ".csv"), row.names = TRUE , sep = "")
+#}
+
+```
+
+```{r}
+#sig_bimod  <- read.csv("C:/Users/saraa/Desktop/sig_bimod.csv" , row.names  = 1, header = T)
+#sig_DESeq2 <- read.csv("C:/Users/saraa/Desktop/sig_DESeq2.csv", row.names  = 1, header = T)
+#sig_LR     <- read.csv("C:/Users/saraa/Desktop/sig_LR.csv", row.names  = 1, header = T) 
+#sig_MAST   <- read.csv("C:/Users/saraa/Desktop/sig_MAST.csv", row.names  = 1, header = T)
+#sig_t      <- read.csv("C:/Users/saraa/Desktop/sig_t.csv.", row.names  = 1, header = T)
+#sig_wilcox <- read.csv("C:/Users/saraa/Desktop/sig_wilcox.csv", row.names  = 1, header = T)
+```
+
+
+```{r}
+# Get the rownames for each data frame in the list
+row_names_list <- lapply(sig_genes_list, rownames)
+
+# Find the common rownames across all data frames
+common_genes <- Reduce(intersect, row_names_list)
+
+# Print the common genes
+length(common_genes)
+
+```
+
+
+
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Combine all significant dataframes into one, adding a method column
+combined_df <- bind_rows(
+  mutate(DEGs_wilcox, method = "Wilcox"),
+  mutate(DEGs_bimod, method = "Bimod"),
+  mutate(DEGs_t, method = "T"),
+  mutate(DEGs_LR, method = "LR"),
+  mutate(DEGs_MAST, method = "MAST"),
+  mutate(DEGs_DESeq2, method = "DESeq2")
+)
+
+# Add a column for color based on the fold change and significance threshold
+combined_df <- combined_df %>%
+  mutate(color = case_when(
+    p_val_adj < 0.05 & avg_log2FC > 2 ~ "up",
+    p_val_adj > 0.05 & abs(avg_log2FC) <= 2 ~ "Not Significant",
+    p_val_adj < 0.05 & avg_log2FC <= -2 ~ "down",
+    TRUE ~ "Not Significant"
+  ))
+
+# Create the volcano plot with facets for each method
+volcano_plot_combined <- ggplot(combined_df, aes(x = avg_log2FC, y = -log10(p_val_adj), color = color)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_manual(values = c("up" = "red", 
+                                "down" = "blue", 
+                                "Not Significant" = "gray")) +
+  facet_wrap(~ method, scales = "free") +
+  labs(title = "Volcano Plots Across Methods",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 16),
+    legend.position = "right"
+  )
+
+# Display the plot
+print(volcano_plot_combined)
+
+
+```
+
+```{r}
+sig_list_DESeq2 <- rownames(sig_DESeq2)
+sig_list_bimod  <- rownames(sig_bimod)
+sig_list_LR     <- rownames(sig_LR)
+sig_list_MAST   <- rownames(sig_MAST)
+sig_list_t      <- rownames(sig_t)
+sig_list_wilcox <- rownames(sig_wilcox)
+
+print(paste0("DESeq2 significant biomarkers: ", length(sig_list_DESeq2)))
+print(paste0("bimod significant biomarkers: ", length(sig_list_bimod)))
+print(paste0("LR significant biomarkers: ", length(sig_list_LR)))
+print(paste0("MAST significant biomarkers: ", length(sig_list_MAST)))
+print(paste0("t significant biomarkers: ", length(sig_list_t)))
+print(paste0("wilcox significant biomarkers: ", length(sig_list_wilcox)))
+print(paste0("common significant biomarkers: ", length(common_genes)))
+
+```
+
+
+
+
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------
+
+
+
+
+
+ pseudo-bulk workflow
+
+
+In Seurat, you can analyze pseudo bulk differential expression (DE) using DESeq2, which is commonly used for differential expression analysis in bulk RNA-seq data but can be adapted for single-cell data. This involves aggregating single-cell RNA-seq data into pseudo-bulk samples (by summing or averaging gene expression across cells in each condition) and then applying DESeq2 for differential expression analysis.
+
+Benefits:
+This approach leverages DESeq2's well-established statistical framework for differential expression, applying it to aggregated single-cell data.
+
+
+Considerations:
+Pseudo bulk analysis involves aggregating data, which may smooth out some single-cell-specific features. It’s essential to consider whether this approach aligns with your experimental design and research questions.
+
+
+```{r}
+library(DESeq2)
+
+```
+
+
+
+```{r}
+seu.filtered$samples <- paste0(seu.filtered$stim, seu.filtered$ind)
+
+head(seu.filtered@meta.data)
+
+```
+
+
+
+```{r}
+cts <- AggregateExpression(seu.filtered, 
+                    group.by = c("cell", "samples"),
+                    assays = 'originalexp',
+                    slot = "counts",
+                    return.seurat = FALSE)
+
+
+```
+
+
+```{r}
+cts <- cts$originalexp
+
+```
+
+
+```{r}
+# transpose
+cts.t <- t(cts)
+
+```
+
+
+```{r}
+# convert to data.frame
+cts.t <- as.data.frame(cts.t)
+
+```
+
+```{r}
+
+head(seu.filtered@meta.data)
+
+```
+
+
+```{r}
+# get values where to split
+splitRows <- gsub('_.*', '', rownames(cts.t))
+
+
+```
+
+
+
+```{r}
+# split data.frame
+cts.split <- split.data.frame(cts.t,
+                 f = factor(splitRows))
+
+
+```
+
+
+```{r}
+cts.split.modified <- lapply(cts.split, function(x){
+  rownames(x) <- gsub('.*_(.*)', '\\1', rownames(x))
+  t(x)
+  
+})
+dim(cts.split.modified$`CD14+ Monocytes`)
+
+```
+ 
+ DE analysis with CD14 Monocytes
+ 
+```{r}
+
+#  Get counts matrix
+
+counts_CD14_Monocytes <- cts.split.modified$`CD14+ Monocytes`
+```
+
+```{r}
+dim(counts_CD14_Monocytes)
+```
+
+
+```{r}
+#  generate sample level metadata
+
+colData <- data.frame(samples = colnames(counts_CD14_Monocytes))
+```
+
+
+```{r}
+#create the metadata
+
+colData <- colData %>%
+  mutate(condition = ifelse(grepl('stim', samples), 'Stimulated', 'Control')) %>%
+  column_to_rownames(var = 'samples')
+
+```
+
+
+```{r}
+# Create DESeq2 object  
+
+dds <- DESeqDataSetFromMatrix(countData = counts_CD14_Monocytes,
+                       colData = colData,
+                       design = ~ condition)
+
+```
+
+```{r}
+# filter
+keep <- rowSums(counts(dds)) >=10
+dds <- dds[keep,]
+
+```
+
+
+```{r}
+# run DESeq2
+dds <- DESeq(dds)
+```
+
+
+```{r}
+resultsNames(dds)
+
+
+```
+
+
+```{r}
+res <- results(dds, name = "condition_Stimulated_vs_Control")
+head(res , n= 20)
+```
+
+
+
+```{r}
+
+# Create a new column to indicate the direction of exp
+res$direction = ifelse(res$log2FoldChange > 0, "Up", "Down")
+```
+
+
+```{r}
+library(ggplot2)
+library(ggrepel)  
+
+# VOLCANO Plot
+ggplot(res, aes(x = log2FoldChange, y = -log10(padj), color = direction)) + 
+  geom_point(alpha = 0.7, size = 2, shape = 21, stroke = 0.5) +  # Adjust appearance of points
+    geom_text(aes(label = rownames(res)), check_overlap = TRUE, vjust = 3 , size =1.5)+
+   
+  geom_vline(xintercept = c(2, -2), linetype = "dashed", color = "grey50") +  # Vertical lines
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey50") +  # Horizontal line
+  scale_color_manual(values = c("Up" = "blue", "Down" = "red")) + 
+  scale_size_continuous(range = c(2, 6)) +  # Adjust size range for points
+  theme_classic(base_size = 15) + 
+  theme(
+    legend.position = "bottom", 
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 14),
+    axis.text = element_text(size = 12),
+   
+  ) +
+  labs(
+    x = "Log2 Fold Change", 
+    y = "-log10(Adjusted p-value)", 
+    color = "Direction",
+    size = "Significance",
+    title = "Volcano Plot"
+  )
+
+```
+
+
+
+
+```{r}
+cell_plot <- DimPlot(seu.filtered, reduction = 'umap', group.by = 'cell', label = TRUE)
+cond_plot <- DimPlot(seu.filtered, reduction = 'umap', group.by = 'stim')
+
+cell_plot|cond_plot
+```
+
+
+```{r}
+
+FeaturePlot(seu.filtered, features = 'IL1RN', min.cutoff = 'q10' , label = T)
+
+```
+
+
+```{r}
+
+# Convert DESeqResults object to a data.frame
+res_df <- as.data.frame(res)
+
+# Filter, sort, and select top 10 up features
+filtered_res <- res_df %>%
+  filter(direction =="Up" & log2FoldChange > 2 ) %>%
+  arrange(padj) %>%
+  slice_head(n = 10)
+
+# Extract row names from the filtered data frame
+top_features <- rownames(res)[rownames(res) %in% rownames(filtered_res)]
+
+# Print the top features
+print(top_features)
+
+```
+
+
+```{r}
+DotPlot(
+  seu.filtered,
+  top_features,
+  assay = NULL,
+  cols = c("lightgrey", "blue"),
+  col.min = -2.5,
+  col.max = 2.5,
+  dot.min = 0,
+  dot.scale = 6,
+  idents = NULL,
+  group.by = NULL,
+  split.by = NULL,
+  cluster.idents = FALSE,
+  scale = TRUE,
+  scale.by = "radius",
+  scale.min = NA,
+  scale.max = NA
+) + theme(axis.text.x = element_text(angle = 90, hjust = 1 , size = 5))
+
+
+```
+
+```{r}
+sig_list_bulk <- res_df %>%
+  filter(padj < 0.05 & log2FoldChange > 2) %>%
+  row.names
+
+print(paste0('significant biomarkers in bulk: ',length(sig_list_bulk)))
+
+
+```
+
+```{r}
+library(ggVennDiagram)
+
+# Create a list of sets
+sets <- list(
+    wilcox = sig_list_wilcox,
+    bimod  = sig_list_bimod,
+    t      = sig_list_t,
+    LR     = sig_list_LR,
+    MAST   = sig_list_MAST,
+    DESeq2 = sig_list_DESeq2,
+    bulk   = sig_list_bulk
+)
+
+# Draw the Venn diagram with enhanced aesthetics
+venn_plot <- ggVennDiagram(sets) + 
+  scale_fill_gradient(low = "white", high = "#0073C2FF") +  # Adjust fill gradient
+  labs(title = "Gene Overlap Across Different methods with bulk DEGs") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),  # Center title
+    legend.position = "right",  # Move legend to the right
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    text = element_text(size = 14)
+  )
+
+venn_plot
+
+```
+
+
+
+```{r}
+common_genes_with_bulk <- Reduce(intersect, rownames(sig_genes_list) , sig_list_bulk)
+```
+
+
+```{r}
+names(res_df) <- paste0(names(res_df), ".bulk")
+res_df$gene <- rownames(res_df)
+
+names(DEGs_bimod) <- paste0(names(DEGs_bimod), ".bimod")
+DEGs_bimod$gene <- rownames(DEGs_bimod)
+
+names(DEGs_DESeq2) <- paste0(names(DEGs_DESeq2), ".DESeq2")
+DEGs_DESeq2$gene <- rownames(DEGs_DESeq2)
+
+names(DEGs_LR) <- paste0(names(DEGs_LR), ".LR")
+DEGs_LR$gene <- rownames(DEGs_LR)
+
+names(DEGs_MAST) <- paste0(names(DEGs_MAST), ".MAST")
+DEGs_MAST$gene <- rownames(DEGs_MAST)
+
+names(DEGs_t) <- paste0(names(DEGs_t), ".t")
+DEGs_t$gene <- rownames(DEGs_t)
+
+names(DEGs_wilcox) <- paste0(names(DEGs_wilcox), ".wilcox")
+DEGs_wilcox$gene <- rownames(DEGs_wilcox)
+
+merge_dat <- Reduce(function(x, y) merge(x, y, by = "gene"), 
+                    list(DEGs_DESeq2, DEGs_bimod, DEGs_LR, DEGs_MAST, DEGs_t, DEGs_wilcox, res_df))
+merge_dat <- merge_dat[order(merge_dat$pvalue.bulk), ]
+```
+
+
+```{r}
+Idents(seu.filtered) <- "celltype.cnd"
+
+```
+
+```{r}
+print(merge_dat[merge_dat$gene%in%common_genes[1:2],c('gene','p_val_adj.DESeq2','p_val_adj.MAST')])
+
+```
+
+
+```{r}
+VlnPlot(seu.filtered, features = common_genes[1:2], idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "stim") 
+
+```
+
+
+```{r}
+VlnPlot(seu.filtered, features = common_genes_with_bulk[1:2], idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "samples", ncol = 1) 
+```
+
+
+```{r}
+# Filter for genes with padj < 0.05 in the specific method and padj > 0.05 in all other methods
+only_wilcox <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox < 0.05
+)]
+
+only_bimod <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod < 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+only_DESeq2 <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 < 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+only_LR <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR < 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+only_MAST <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST < 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+only_t <- merge_dat$gene[which(
+  merge_dat$padj.bulk > 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t < 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+only_bulk <- merge_dat$gene[which(
+  merge_dat$padj.bulk < 0.05 &
+  merge_dat$p_val_adj.bimod > 0.05 &
+  merge_dat$p_val_adj.DESeq2 > 0.05 &
+  merge_dat$p_val_adj.t > 0.05 &
+  merge_dat$p_val_adj.LR > 0.05 &
+  merge_dat$p_val_adj.MAST > 0.05 &
+  merge_dat$p_val_adj.wilcox > 0.05
+)]
+
+# Create a list of filtered genes
+exclusive_genes_list <- list(
+  "Wilcox" = only_wilcox,
+  "Bimod" = only_bimod,
+  "DESeq2" = only_DESeq2,
+  "LR" = only_LR,
+  "MAST" = only_MAST,
+  "T" = only_t,
+  "bulk" = only_bulk
+)
+
+# Print the number of filtered genes for each method
+sapply(exclusive_genes_list, length)
+
+```
+```{r}
+head(exclusive_genes_list)
+```
+
+
+
+
+```{r}
+print(merge_dat[merge_dat$gene%in%c('CLTA','CAPG'),c('gene','p_val_adj.MAST',"p_val_adj.DESeq2", "p_val_adj.bimod", "p_val_adj.LR","p_val_adj.t", "p_val_adj.wilcox" ,'padj.bulk')])
+```
+
+
+
+```{r}
+VlnPlot(seu.filtered, features <- c('CLTA','CAPG'), idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "stim") 
+```
+
+
+```{r}
+VlnPlot(seu.filtered, features <- c('CLTA','CAPG'), idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "samples", ncol = 1) 
+```
+
+
+
+GRHPR is only expressed in LR method
+
+```{r}
+VlnPlot(seu.filtered, features <- c('GRHPR'), idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "samples", ncol = 1) 
+```
+
+COPS7A is Only expressed in bimod method
+
+```{r}
+VlnPlot(seu.filtered, features <- c('COPS7A'), idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "samples", ncol = 1) 
+```
+
+
+```{r}
+    top_50_common    <- merge_dat[merge_dat[ , 1] %in% common_genes_with_bulk , ]
+    top_50_common    <- top_50_common[1:50, ]
+
+top_genes_common_mat <- counts_CD14_Monocytes[ rownames(counts_CD14_Monocytes) %in% top_50_common$gene , ]
+
+```
+
+
+```{r}
+library(ComplexHeatmap)
+set.seed(16863)
+mycolors= rep("navy",dim(colData)[1])
+mycolors[which(colData=="stimulated")]="green"
+
+column_ha = HeatmapAnnotation(Sample_type= colData$condition)
+Heatmap(top_genes_common_mat, name = "top", top_annotation = column_ha)
+Heatmap(top_genes_common_mat, name = "top", top_annotation = column_ha, row_names_gp = gpar(fontsize = 5), column_names_gp = gpar(fontsize = 5, mycolors))
+
+```
+
+```{r}
+DotPlot(
+  seu.filtered,
+  common_genes_with_bulk,
+  assay = NULL,
+  cols = c("lightgrey", "blue"),
+  col.min = -2.5,
+  col.max = 2.5,
+  dot.min = 0,
+  dot.scale = 6,
+  idents = NULL,
+  group.by = NULL,
+  split.by = NULL,
+  cluster.idents = FALSE,
+  scale = TRUE,
+  scale.by = "radius",
+  scale.min = NA,
+  scale.max = NA
+) + theme(axis.text.x = element_text(angle = 90, hjust = 1 , size = 5))
+
+
+```
+
+
+
+```{r}
+print(merge_dat[merge_dat$gene%in%c('CCL8' ,'ISG15' , 'IFI6' ),c('gene','p_val_adj.MAST',"p_val_adj.DESeq2", "p_val_adj.bimod", "p_val_adj.LR","p_val_adj.t", "p_val_adj.wilcox" ,'padj.bulk')])
+```
+
+
+
+```{r}
+
+FeaturePlot(seu.filtered, features = c("CCL8" ,'ISG15' , 'IFI6') , label = T )
+
+```
+
+
+
+
+```{r}
+VlnPlot(seu.filtered, features <- c('CCL8' ,'ISG15' ,'IFI6'), idents = c("CD14+ Monocytes_stim", "CD14+ Monocytes_ctrl"), group.by = "samples", ncol = 1) 
+```
+
+
+```{r}
+```
+
+
+
+
