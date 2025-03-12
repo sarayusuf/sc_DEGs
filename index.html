@@ -1,0 +1,1143 @@
+<p>---</p>
+<p>title: &quot;************ genes in ***** ****** cell seq&quot;</p>
+<p>author: &quot;sara yusuf&quot;</p>
+<p>date: &quot;`r Sys.Date()`&quot;</p>
+<p>output:</p>
+<p>&nbsp; html_document: default</p>
+<p>&nbsp; pdf_document: default</p>
+<p>---</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(Seurat , verbose = F)</p>
+<p>library(tidyverse, verbose = F)</p>
+<p>library(ExperimentHub, ******* = F)</p>
+<p>library(metap, verbose = F)</p>
+<p>library(multtest, ******* = F)</p>
+<p>library(SingleCellExperiment, verbose = F)</p>
+<p>library(DESeq2)</p>
+<p>library(MAST)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># *** data</p>
+<p>** &lt;- ExperimentHub()</p>
+<p>query(eh, &quot;Kang&quot;)</p>
+<p><br></p>
+<p>*** &lt;- eh[[&quot;EH2259&quot;]]</p>
+<p>seu.obj &lt;- as.Seurat(sce, data = NULL)</p>
+<p><br></p>
+<p>head(<a data-fr-linked="true" href="mailto:seu.obj@meta.data">seu.obj@meta.data</a>)</p>
+<p><br></p>
+<p>```</p>
+<p>```{r}</p>
+<p>str(seu.obj)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># get **** percent</p>
+<p>seu.obj$mitoPercent &lt;- PercentageFeatureSet(seu.obj, pattern = &apos;^MT-&apos;)</p>
+<p>head(<a data-fr-linked="true" href="mailto:seu.obj@meta.data">seu.obj@meta.data</a>)</p>
+<p><br></p>
+<p># filter</p>
+<p>seu.filtered &lt;- subset(seu.obj, subset = nFeature_*********** &gt; 200 &amp; nFeature_originalexp &lt; 25** &amp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;nCount_originalexp &gt; 8** &amp;&nbsp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;mitoPercent &lt; 5 &amp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;multiplets == &apos;singlet&apos;)</p>
+<p><br></p>
+<p>seu.obj</p>
+<p>seu.filtered</p>
+<p>```</p>
+<p><br></p>
+<p>Purpose ** FindVariableFeatures()</p>
+<p><br></p>
+<p>1. Identify Key Genes:</p>
+<p><br></p>
+<p>**** Variability: *** function ***** identify ***** **** high variability ** ***** expression ****** ****** cells. These genes are often more ****** for distinguishing biological differences between cells.</p>
+<p>************** Reduction: ** ******** on these highly variable genes, you can reduce the dimensionality of *** data, ****** it easier to perform ********** and visualization.</p>
+<p><br></p>
+<p>2. ******* ********** and Visualization:</p>
+<p><br></p>
+<p>Clustering: Highly variable genes provide better input for clustering algorithms because they capture *** most significant biological differences between cells.</p>
+<p>Visualization: ********** like PCA (Principal Component Analysis) and t-SNE (t-Distributed Stochastic Neighbor Embedding) ** UMAP (Uniform Manifold ************* *** Projection) benefit **** ******** on ******** genes for clearer separation of clusters.</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>seu.filtered &lt;- NormalizeData(seu.filtered)</p>
+<p>seu.******** &lt;- FindVariableFeatures(seu.filtered)</p>
+<p>seu.******** &lt;- ScaleData(seu.filtered)</p>
+<p>seu.******** &lt;- RunPCA(seu.filtered)</p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>str(seu.filtered)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>variablefeatures = VariableFeatures(seu.filtered)</p>
+<p>length(variablefeatures)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># Identify the 10 **** highly variable genes</p>
+<p>top10 &lt;- head(VariableFeatures(seu.filtered), 10)</p>
+<p><br></p>
+<p># **** ******** features **** and ******* labels</p>
+<p>***** &lt;- VariableFeaturePlot(seu.filtered)</p>
+<p>LabelPoints(**** = plot1, ****** = top10, repel = TRUE)</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>ElbowPlot(seu.filtered)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>seu.filtered &lt;- RunUMAP(seu.filtered, **** = 1:20)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># visualize&nbsp;</p>
+<p>cell_plot &lt;- DimPlot(seu.filtered, reduction = &apos;umap&apos;, group.by = &apos;cell&apos;, label = TRUE)</p>
+<p>cond_plot &lt;- DimPlot(seu.filtered, reduction = &apos;umap&apos;, group.** = &apos;stim&apos;)</p>
+<p><br></p>
+<p>cell_plot|cond_plot</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>Purpose of FindAllMarkers()</p>
+<p><br></p>
+<p>1. ******** Cluster-******** Markers:</p>
+<p><br></p>
+<p>Cluster Markers: Helps in finding genes that are ************ ********* in individual clusters, which can ** used to characterize and distinguish different **** types or states.</p>
+<p>*********** Analysis: ******** differential expression across all clusters, ********* a ************* view of which genes are ****** to **** cluster.</p>
+<p><br></p>
+<p>2. Understand Cellular Heterogeneity:</p>
+<p><br></p>
+<p>Biological Insight: Provides insight **** *** molecular signatures ** different cell populations, aiding in the interpretation of cellular heterogeneity.</p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>Idents(seu.filtered) = <a data-fr-linked="true" href="mailto:seu.filtered@meta.data">seu.filtered@meta.data</a>$cell</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># findAll markers&nbsp;</p>
+<p><br></p>
+<p>#FindAllMarkers(seu.filtered,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# logfc.threshold = 0.25,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# &nbsp;min.pct = 0.1,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# only.pos = TRUE,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# &nbsp;test.use = &apos;DESeq2&apos;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# &nbsp;slot = &apos;counts&apos;)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>#save the variable&nbsp;</p>
+<p>#save(all_markers, file = &quot;all_markers.RData&quot;)</p>
+<p><br></p>
+<p><br></p>
+<p>#Loading the Variable **** a File</p>
+<p>load(&quot;all_markers.RData&quot;)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># ******** top 10 markers for each cluster</p>
+<p>top10_all_markers &lt;- all_markers %&gt;%&nbsp;</p>
+<p>&nbsp; group_by(cluster) %&gt;%&nbsp;</p>
+<p>&nbsp; top_n(n = 10, ** = avg_log2FC)</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p># Plot heatmap&nbsp;</p>
+<p>DoHeatmap(seu.filtered, features = unique(top10_all_markers$gene)) +&nbsp;</p>
+<p>&nbsp; NoLegend() +&nbsp;</p>
+<p>&nbsp; theme(legend.******** = &quot;bottom&quot;) +&nbsp;</p>
+<p>&nbsp; scale_fill_gradientn(colors = c(&quot;blue&quot;, &quot;white&quot;, &quot;red&quot;)) +</p>
+<p>&nbsp; theme(legend.text = element_text(size = 5))</p>
+<p><br></p>
+<p>```</p>
+<p>```{r}</p>
+<p>top10_all_markers &lt;- top10_all_markers[!duplicated(top10_all_markers$gene), ]</p>
+<p><br></p>
+<p>DotPlot(</p>
+<p>&nbsp; seu.filtered,</p>
+<p>&nbsp; top10_all_markers$gene,</p>
+<p>&nbsp; assay = NULL,</p>
+<p>&nbsp; cols = c(&quot;lightgrey&quot;, &quot;red&quot;),</p>
+<p>&nbsp; col.*** = -2.5,</p>
+<p>&nbsp; col.max = 2.5,</p>
+<p>&nbsp; dot.min = 0,</p>
+<p>&nbsp; dot.***** = 6,</p>
+<p>&nbsp; idents = NULL,</p>
+<p>&nbsp; group.by = NULL,</p>
+<p>&nbsp; split.by = NULL,</p>
+<p>&nbsp; cluster.idents = FALSE,</p>
+<p>&nbsp; scale = TRUE,</p>
+<p>&nbsp; scale.** = &quot;radius&quot;,</p>
+<p>&nbsp; scale.*** = NA,</p>
+<p>&nbsp; scale.max = NA</p>
+<p>) + theme(axis.text.x = element_text(***** = 90, ***** = 1 , size = 5))</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>#Feature **** *** *** expressed ***** in each **** type genes</p>
+<p><br></p>
+<p>FeaturePlot(seu.filtered, features = c(&quot;CD83&quot;, &quot;NKG7&quot; ,&quot;HIST1H2AC&quot;,&quot;TXN&quot; &nbsp;) , label = T)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>DefaultAssay(seu.filtered)&nbsp;</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>******* ** FindConservedMarkers()</p>
+<p><br></p>
+<p>1. Identify ****** Markers:</p>
+<p><br></p>
+<p>Consistency Across Conditions: This ******** ***** find ******* that are consistently expressed in ******* cell types ** ******** regardless ** ************ conditions or different datasets.</p>
+<p>Robust Features: ********* ******* are useful for understanding the **** characteristics of cell ***** or states **** are ********* across ********* ********** contexts.</p>
+<p><br></p>
+<p>2. Cross-******* Comparisons:</p>
+<p><br></p>
+<p>Benchmarking: Allows comparison of markers across ********* datasets or experiments, which ** valuable for validating findings and ensuring the robustness of ********** markers.</p>
+<p><br></p>
+<p>```{r}</p>
+<p># ************* ******* *** &quot;CD14+ Monocytes&quot;</p>
+<p><br></p>
+<p>#markers_******* &lt;- FindConservedMarkers(seu.filtered,</p>
+<p># &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;ident.1 = &quot;CD14+ Monocytes&quot;,</p>
+<p># &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; grouping.var = &apos;stim&apos;,</p>
+<p># &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;assay &nbsp;= &nbsp;&quot;originalexp&quot;)</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>#save the variable&nbsp;</p>
+<p>#save(markers_cluster, file = &quot;markers_cluster.RData&quot;)</p>
+<p><br></p>
+<p>#Loading *** Variable **** a File</p>
+<p>load(&quot;markers_cluster.RData&quot;)</p>
+<p>head(markers_cluster)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>head(markers_cluster)</p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>library(dplyr)</p>
+<p><br></p>
+<p>filtered_con &lt;- markers_cluster %&gt;%</p>
+<p>&nbsp; filter(minimump_p_val &lt; 0.05 ) %&gt;%</p>
+<p>&nbsp; slice_head(n = 100)</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>Idents(seu.filtered) = seu.filtered$cell</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>DotPlot(</p>
+<p>&nbsp; seu.filtered,</p>
+<p>&nbsp; rownames(filtered_con),</p>
+<p>&nbsp; ***** = NULL,</p>
+<p>&nbsp; cols = c(&quot;lightgrey&quot;, &quot;red&quot;),</p>
+<p>&nbsp; col.min = -2.5,</p>
+<p>&nbsp; col.max = 2.5,</p>
+<p>&nbsp; dot.min = 0,</p>
+<p>&nbsp; dot.scale = 6,</p>
+<p>&nbsp; idents = NULL,</p>
+<p>&nbsp; group.by = NULL,</p>
+<p>&nbsp; split.** = NULL,</p>
+<p>&nbsp; cluster.idents = FALSE,</p>
+<p>&nbsp; scale = TRUE,</p>
+<p>&nbsp; scale.by = &quot;radius&quot;,</p>
+<p>&nbsp; scale.min = NA,</p>
+<p>&nbsp; scale.*** = NA</p>
+<p>) + theme(axis.text.x = element_text(***** = 90, ***** = 1 , **** = 5))</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>#visualize &quot;TYROBP&quot; gene&nbsp;</p>
+<p><br></p>
+<p>```{r}</p>
+<p>cell_plot &lt;- DimPlot(seu.filtered, reduction = &apos;umap&apos;, group.by = &apos;cell&apos;, label = TRUE)</p>
+<p>cell_plot</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>FeaturePlot(seu.filtered, features = &apos;TYROBP&apos;, min.cutoff = &apos;q10&apos;)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># findMarkers between conditions&nbsp;</p>
+<p><br></p>
+<p>seu.filtered$celltype.cnd &lt;- paste0(seu.filtered$cell,&quot;_&quot; ,seu.filtered$stim)</p>
+<p>Idents(seu.filtered) &lt;- seu.filtered$celltype.cnd</p>
+<p>head(<a data-fr-linked="true" href="mailto:seu.filtered@meta.data">seu.filtered@meta.data</a>)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>DimPlot(seu.filtered, ********* = &apos;umap&apos;, label = TRUE)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>&nbsp;find ******* differentiate CD14+ Monocytes_stim vs CD14+ Monocytes_ctrl using all listed methods</p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p># Define the list of **** ******* to compare</p>
+<p>#test_methods &lt;- c(&quot;wilcox&quot;, &quot;bimod&quot;, &quot;t&quot;, &quot;LR&quot;, &quot;MAST&quot;, &quot;DESeq2&quot;)</p>
+<p><br></p>
+<p># ****** an ***** list ** store the results for each test</p>
+<p>#results_list &lt;- list()</p>
+<p><br></p>
+<p>#Loop ******* each test method and run FindMarkers</p>
+<p># &nbsp; for (test in test_methods) {</p>
+<p>&nbsp; &nbsp; &nbsp;#*** *********** **** the current test method</p>
+<p>&nbsp;# &nbsp; &nbsp;markers &lt;- FindMarkers(seu.filtered,&nbsp;</p>
+<p># &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;ident.1 = &apos;CD14+ Monocytes_stim&apos;,&nbsp;</p>
+<p>&nbsp;# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ident.2 = &apos;CD14+ Monocytes_ctrl&apos;,&nbsp;</p>
+<p>&nbsp;# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;test.use = test)</p>
+<p>&nbsp;&nbsp;</p>
+<p>&nbsp; # Store the results in *** list **** the **** ****** as *** name</p>
+<p># results_list[[test]] &lt;- markers</p>
+<p>#}</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>#save(markers, **** = &quot;markers.RData&quot;)</p>
+<p><br></p>
+<p>#Loading the Variable from a File</p>
+<p>load(&quot;markers.RData&quot;)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>load(&quot;results_list.RData&quot;)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p># **** through each ******* in markers_**** and assign to a new **** frame</p>
+<p>for (test in names(results_list)) {</p>
+<p>&nbsp; assign(paste0(&quot;DEGs_&quot;, test), results_list[[test]])</p>
+<p>}</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(dplyr)</p>
+<p><br></p>
+<p># Combine all DEGs into one data ***** with a method column</p>
+<p>combined &lt;- do.call(rbind, lapply(names(results_list), function(test) {</p>
+<p>&nbsp; ** &lt;- results_list[[test]]</p>
+<p>&nbsp; df$****** &lt;- test &nbsp;# Add method name as a *** column</p>
+<p>&nbsp; df</p>
+<p>}))</p>
+<p><br></p>
+<p><br></p>
+<p>library(ggplot2)</p>
+<p><br></p>
+<p># ****** a refined color palette</p>
+<p>color_******* &lt;- c(&quot;#2E86C1&quot;, &quot;#E74C3C&quot;, &quot;#27AE60&quot;, &quot;#8E44AD&quot;, &quot;#F39C12&quot;, &quot;#16A085&quot;, &quot;#D35400&quot;, &quot;#7F8C8D&quot;)</p>
+<p><br></p>
+<p># Create *** *** **** **** enhanced aesthetics</p>
+<p>ggplot(combined, aes(x = method, y = -log10(p_val_adj), color = method)) +</p>
+<p>&nbsp; geom_boxplot(outlier.shape = NA, alpha = 0.8, ***** = 0.6, lwd = 0.6) + &nbsp;# Slightly ******* ***** for boxes</p>
+<p>&nbsp; geom_jitter(width = 0.2, size = 0.8, alpha = 0.6) + &nbsp;# Smaller, more ****** ******** points</p>
+<p>&nbsp; labs(title = &quot;Distribution of Adjusted P-****** Across Methods&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;******** = &quot;A comparison of adjusted p-values for **** ****** ********* analysis methods&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;x = &quot;Method&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;y = &quot;******** P-Value&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;caption = &quot;Log10 scale used for p-values. Each point ********** a gene&apos;s adjusted p-value.&quot;) +</p>
+<p>&nbsp; theme_classic(base_size = 14) + &nbsp;# Classic theme with a **** font **** suitable *** publication</p>
+<p>&nbsp; theme(</p>
+<p>&nbsp; &nbsp; axis.text.x = element_text(***** = 45, hjust = 1, face = &quot;bold&quot;, size = 12), &nbsp;# Bold x-axis labels</p>
+<p>&nbsp; &nbsp; axis.text.y = element_text(face = &quot;bold&quot;, size = 12), &nbsp;# Bold y-**** labels</p>
+<p>&nbsp; &nbsp; plot.***** = element_text(hjust = 0.5, face = &quot;bold&quot;, size = 16), &nbsp;# Centered and **** title</p>
+<p>&nbsp; &nbsp; plot.******** = element_text(hjust = 0.5, **** = &quot;italic&quot;, size = 12), &nbsp;# Centered italic subtitle</p>
+<p>&nbsp; &nbsp; legend.******** = &quot;none&quot;, &nbsp;# Remove legend to avoid redundancy</p>
+<p>&nbsp; &nbsp; panel.grid.major.y = element_line(***** = &quot;gray90&quot;, size = 0.3) &nbsp;# Light **** ***** for y-axis</p>
+<p>&nbsp; ) +</p>
+<p>&nbsp; scale_y_log10(labels = scales::scientific) + &nbsp;# Log scale with scientific notation for p-values</p>
+<p>&nbsp; scale_color_manual(values = color_palette) &nbsp;# ***** the ******* ***** palette</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>filter_degs &lt;- function(df) {</p>
+<p>&nbsp; df %&gt;%</p>
+<p>&nbsp; &nbsp; filter(p_val_*** &lt; 0.05 &amp; avg_log2** &gt; 2)</p>
+<p>}</p>
+<p><br></p>
+<p># Apply the filtering function to each data frame</p>
+<p>sig_wilcox &lt;- filter_degs(DEGs_wilcox)</p>
+<p>sig_bimod &lt;- filter_degs(DEGs_bimod)</p>
+<p>sig_t &lt;- filter_degs(DEGs_t)</p>
+<p>sig_LR &lt;- filter_degs(DEGs_LR)</p>
+<p>sig_MAST &lt;- filter_degs(DEGs_MAST)</p>
+<p>sig_DESeq2 &lt;- filter_degs(DEGs_DESeq2)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># List of significant markers</p>
+<p>sig_genes_**** &lt;- list(</p>
+<p>&nbsp; &quot;wilcox&quot; = sig_wilcox,</p>
+<p>&nbsp; &quot;bimod&quot; = sig_bimod,</p>
+<p>&nbsp; &quot;t&quot; = sig_t,</p>
+<p>&nbsp; &quot;LR&quot; = sig_LR,</p>
+<p>&nbsp; &quot;MAST&quot; = sig_MAST,</p>
+<p>&nbsp; &quot;DESeq2&quot; = sig_DESeq2</p>
+<p>)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># Loop ******* each ******* ** sig_genes_list and ***** to a CSV file</p>
+<p>#for (list_name in names(results_list)) {</p>
+<p>&nbsp; # ****** each **** ******* ** a **** frame</p>
+<p># df &lt;- results_list[[list_name]]</p>
+<p>&nbsp;&nbsp;</p>
+<p>&nbsp;#Write the data frame to a CSV file</p>
+<p>&nbsp;# write.csv(df, file = paste0(&quot;sig_&quot;, list_name, &quot;.csv&quot;), row.names = TRUE , sep = &quot;&quot;)</p>
+<p>#}</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>#sig_bimod &nbsp;&lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_bimod.csv&quot; , row.names &nbsp;= 1, header = T)</p>
+<p>#sig_DESeq2 &lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_DESeq2.csv&quot;, row.names &nbsp;= 1, header = T)</p>
+<p>#sig_** &nbsp; &nbsp; &lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_LR.csv&quot;, row.names &nbsp;= 1, ****** = T)&nbsp;</p>
+<p>#sig_MAST &nbsp; &lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_MAST.csv&quot;, row.***** &nbsp;= 1, ****** = T)</p>
+<p>#sig_t &nbsp; &nbsp; &nbsp;&lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_t.csv.&quot;, row.names &nbsp;= 1, ****** = T)</p>
+<p>#sig_wilcox &lt;- read.csv(&quot;C:/Users/saraa/Desktop/sig_wilcox.csv&quot;, row.names &nbsp;= 1, ****** = T)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># Get the rownames for each data frame in the list</p>
+<p>row_names_**** &lt;- lapply(sig_genes_list, rownames)</p>
+<p><br></p>
+<p># Find the common rownames across *** data frames</p>
+<p>common_genes &lt;- Reduce(intersect, row_names_list)</p>
+<p><br></p>
+<p># Print the common genes</p>
+<p>length(common_genes)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(dplyr)</p>
+<p>library(ggplot2)</p>
+<p><br></p>
+<p># Combine all significant ********** into one, ****** a ****** column</p>
+<p>combined_df &lt;- bind_rows(</p>
+<p>&nbsp; mutate(DEGs_wilcox, ****** = &quot;Wilcox&quot;),</p>
+<p>&nbsp; mutate(DEGs_bimod, ****** = &quot;Bimod&quot;),</p>
+<p>&nbsp; mutate(DEGs_t, method = &quot;T&quot;),</p>
+<p>&nbsp; mutate(DEGs_LR, method = &quot;LR&quot;),</p>
+<p>&nbsp; mutate(DEGs_MAST, method = &quot;MAST&quot;),</p>
+<p>&nbsp; mutate(DEGs_DESeq2, method = &quot;DESeq2&quot;)</p>
+<p>)</p>
+<p><br></p>
+<p># *** a column *** ***** based ** *** fold change *** ************ threshold</p>
+<p>combined_df &lt;- combined_** %&gt;%</p>
+<p>&nbsp; mutate(color = case_when(</p>
+<p>&nbsp; &nbsp; p_val_adj &lt; 0.05 &amp; avg_log2FC &gt; 2 ~ &quot;up&quot;,</p>
+<p>&nbsp; &nbsp; p_val_adj &gt; 0.05 &amp; abs(avg_log2FC) &lt;= 2 ~ &quot;Not Significant&quot;,</p>
+<p>&nbsp; &nbsp; p_val_adj &lt; 0.05 &amp; avg_log2** &lt;= -2 ~ &quot;down&quot;,</p>
+<p>&nbsp; &nbsp; TRUE ~ &quot;*** Significant&quot;</p>
+<p>&nbsp; ))</p>
+<p><br></p>
+<p># Create the volcano plot **** facets for each method</p>
+<p>volcano_plot_******** &lt;- ggplot(combined_df, aes(x = avg_log2FC, y = -log10(p_val_adj), color = color)) +</p>
+<p>&nbsp; geom_point(***** = 0.6, size = 2) +</p>
+<p>&nbsp; scale_color_manual(****** = c(&quot;up&quot; = &quot;red&quot;,&nbsp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &quot;down&quot; = &quot;blue&quot;,&nbsp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &quot;Not Significant&quot; = &quot;gray&quot;)) +</p>
+<p>&nbsp; facet_wrap(~ method, ****** = &quot;free&quot;) +</p>
+<p>&nbsp; labs(title = &quot;Volcano Plots ****** Methods&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;x = &quot;Log2 Fold Change&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;y = &quot;-Log10 Adjusted P-value&quot;) +</p>
+<p>&nbsp; theme_minimal(base_size = 14) +</p>
+<p>&nbsp; theme(</p>
+<p>&nbsp; &nbsp; plot.title = element_text(**** = 20, **** = &quot;bold&quot;, hjust = 0.5),</p>
+<p>&nbsp; &nbsp; axis.title = element_text(size = 16),</p>
+<p>&nbsp; &nbsp; legend.position = &quot;right&quot;</p>
+<p>&nbsp; )</p>
+<p><br></p>
+<p># Display the plot</p>
+<p>print(volcano_plot_combined)</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>sig_list_DESeq2 &lt;- rownames(sig_DESeq2)</p>
+<p>sig_list_bimod &nbsp;&lt;- rownames(sig_bimod)</p>
+<p>sig_list_** &nbsp; &nbsp; &lt;- rownames(sig_LR)</p>
+<p>sig_list_MAST &nbsp; &lt;- rownames(sig_MAST)</p>
+<p>sig_list_t &nbsp; &nbsp; &nbsp;&lt;- rownames(sig_t)</p>
+<p>sig_list_wilcox &lt;- rownames(sig_wilcox)</p>
+<p><br></p>
+<p>print(paste0(&quot;DESeq2 significant biomarkers: &quot;, length(sig_list_DESeq2)))</p>
+<p>print(paste0(&quot;***** *********** biomarkers: &quot;, length(sig_list_bimod)))</p>
+<p>print(paste0(&quot;** *********** biomarkers: &quot;, length(sig_list_LR)))</p>
+<p>print(paste0(&quot;**** significant biomarkers: &quot;, length(sig_list_MAST)))</p>
+<p>print(paste0(&quot;t *********** biomarkers: &quot;, length(sig_list_t)))</p>
+<p>print(paste0(&quot;wilcox significant biomarkers: &quot;, length(sig_list_wilcox)))</p>
+<p>print(paste0(&quot;common significant biomarkers: &quot;, length(common_genes)))</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>-----------------------------------------------------------------------------------------------</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>&nbsp;pseudo-bulk workflow</p>
+<p><br></p>
+<p><br></p>
+<p>In Seurat, you can analyze pseudo bulk differential ********** (DE) using DESeq2, which is commonly used for differential expression ******** ** bulk RNA-seq data *** can ** ******* *** single-cell data. This involves aggregating single-cell RNA-seq data into pseudo-bulk samples (** summing or averaging gene ********** ****** cells ** **** condition) *** then ******** DESeq2 *** differential expression analysis.</p>
+<p><br></p>
+<p>Benefits:</p>
+<p>This approach ********* DESeq2&apos;s well-established *********** ********* for differential expression, applying it to ********** single-**** data.</p>
+<p><br></p>
+<p><br></p>
+<p>Considerations:</p>
+<p>****** bulk ******** involves aggregating data, which may ****** out **** single-cell-specific features. It&rsquo;s ********* to consider whether this ******** aligns with your experimental ****** *** research questions.</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(DESeq2)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>seu.filtered$samples &lt;- paste0(seu.filtered$stim, seu.filtered$ind)</p>
+<p><br></p>
+<p>head(<a data-fr-linked="true" href="mailto:seu.filtered@meta.data">seu.filtered@meta.data</a>)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>cts &lt;- AggregateExpression(seu.filtered,&nbsp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; group.by = c(&quot;cell&quot;, &quot;samples&quot;),</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; assays = &apos;originalexp&apos;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; slot = &quot;counts&quot;,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; return.****** = FALSE)</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>*** &lt;- cts$originalexp</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># transpose</p>
+<p>cts.t &lt;- t(cts)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># convert to data.frame</p>
+<p>cts.t &lt;- as.data.frame(cts.t)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>head(<a data-fr-linked="true" href="mailto:seu.filtered@meta.data">seu.filtered@meta.data</a>)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># get values where to split</p>
+<p>********* &lt;- gsub(&apos;_.*&apos;, &apos;&apos;, rownames(cts.t))</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># split data.frame</p>
+<p>cts.***** &lt;- split.data.frame(cts.t,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;f = factor(splitRows))</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>cts.split.modified &lt;- lapply(cts.split, function(x){</p>
+<p>&nbsp; rownames(x) &lt;- gsub(&apos;.*_(.*)&apos;, &apos;\\1&apos;, rownames(x))</p>
+<p>&nbsp; t(x)</p>
+<p>&nbsp;&nbsp;</p>
+<p>})</p>
+<p>dim(cts.split.modified$`CD14+ Monocytes`)</p>
+<p><br></p>
+<p>```</p>
+<p>&nbsp;</p>
+<p>&nbsp;DE ******** with CD14 Monocytes</p>
+<p>&nbsp;</p>
+<p>```{r}</p>
+<p><br></p>
+<p># &nbsp;*** counts matrix</p>
+<p><br></p>
+<p>counts_CD14_********* &lt;- cts.split.modified$`CD14+ Monocytes`</p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>dim(counts_CD14_Monocytes)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># &nbsp;generate sample level metadata</p>
+<p><br></p>
+<p>colData &lt;- data.frame(samples = colnames(counts_CD14_Monocytes))</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>#create the metadata</p>
+<p><br></p>
+<p>colData &lt;- colData %&gt;%</p>
+<p>&nbsp; mutate(condition = ifelse(grepl(&apos;stim&apos;, samples), &apos;Stimulated&apos;, &apos;Control&apos;)) %&gt;%</p>
+<p>&nbsp; column_to_rownames(var = &apos;samples&apos;)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># Create DESeq2 ****** &nbsp;</p>
+<p><br></p>
+<p>*** &lt;- DESeqDataSetFromMatrix(********* = counts_CD14_Monocytes,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;colData = colData,</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;design = ~ condition)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p># filter</p>
+<p>keep &lt;- rowSums(counts(dds)) &gt;=10</p>
+<p>dds &lt;- dds[keep,]</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># run DESeq2</p>
+<p>*** &lt;- DESeq(dds)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>resultsNames(dds)</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>res &lt;- results(dds, name = &quot;condition_Stimulated_vs_Control&quot;)</p>
+<p>head(res , n= 20)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p># Create a new column to indicate the direction ** exp</p>
+<p>res$direction = ifelse(res$log2********** &gt; 0, &quot;Up&quot;, &quot;Down&quot;)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(ggplot2)</p>
+<p>library(ggrepel) &nbsp;</p>
+<p><br></p>
+<p># VOLCANO Plot</p>
+<p>ggplot(res, aes(x = log2FoldChange, y = -log10(padj), color = direction)) +&nbsp;</p>
+<p>&nbsp; geom_point(alpha = 0.7, size = 2, shape = 21, stroke = 0.5) + &nbsp;# ****** appearance ** points</p>
+<p>&nbsp; &nbsp; geom_text(aes(***** = rownames(res)), check_******* = TRUE, vjust = 3 , size =1.5)+</p>
+<p>&nbsp; &nbsp;</p>
+<p>&nbsp; geom_vline(xintercept = c(2, -2), linetype = &quot;dashed&quot;, color = &quot;grey50&quot;) + &nbsp;# Vertical lines</p>
+<p>&nbsp; geom_hline(********** = -log10(0.05), linetype = &quot;dashed&quot;, ***** = &quot;grey50&quot;) + &nbsp;# Horizontal line</p>
+<p>&nbsp; scale_color_manual(values = c(&quot;Up&quot; = &quot;blue&quot;, &quot;Down&quot; = &quot;red&quot;)) +&nbsp;</p>
+<p>&nbsp; scale_size_continuous(range = c(2, 6)) + &nbsp;# Adjust **** range for points</p>
+<p>&nbsp; theme_classic(base_size = 15) +&nbsp;</p>
+<p>&nbsp; theme(</p>
+<p>&nbsp; &nbsp; legend.******** = &quot;bottom&quot;,&nbsp;</p>
+<p>&nbsp; &nbsp; legend.title = element_text(face = &quot;bold&quot;),</p>
+<p>&nbsp; &nbsp; legend.**** = element_text(size = 12),</p>
+<p>&nbsp; &nbsp; axis.title = element_text(**** = &quot;bold&quot;, size = 14),</p>
+<p>&nbsp; &nbsp; axis.**** = element_text(size = 12),</p>
+<p>&nbsp; &nbsp;</p>
+<p>&nbsp; ) +</p>
+<p>&nbsp; labs(</p>
+<p>&nbsp; &nbsp; x = &quot;Log2 **** Change&quot;,&nbsp;</p>
+<p>&nbsp; &nbsp; y = &quot;-log10(Adjusted p-value)&quot;,&nbsp;</p>
+<p>&nbsp; &nbsp; color = &quot;Direction&quot;,</p>
+<p>&nbsp; &nbsp; **** = &quot;Significance&quot;,</p>
+<p>&nbsp; &nbsp; title = &quot;Volcano Plot&quot;</p>
+<p>&nbsp; )</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>cell_**** &lt;- DimPlot(seu.filtered, reduction = &apos;umap&apos;, group.by = &apos;cell&apos;, label = TRUE)</p>
+<p>cond_plot &lt;- DimPlot(seu.filtered, ********* = &apos;umap&apos;, group.by = &apos;stim&apos;)</p>
+<p><br></p>
+<p>cell_plot|cond_plot</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>FeaturePlot(seu.filtered, ******** = &apos;IL1RN&apos;, min.****** = &apos;q10&apos; , label = T)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p># ******* DESeqResults object ** a data.frame</p>
+<p>res_** &lt;- as.data.frame(res)</p>
+<p><br></p>
+<p># Filter, sort, and ****** top 10 ** features</p>
+<p>filtered_res &lt;- res_df %&gt;%</p>
+<p>&nbsp; filter(direction ==&quot;Up&quot; &amp; log2********** &gt; 2 ) %&gt;%</p>
+<p>&nbsp; arrange(padj) %&gt;%</p>
+<p>&nbsp; slice_head(n = 10)</p>
+<p><br></p>
+<p># Extract *** names from the filtered **** frame</p>
+<p>top_features &lt;- rownames(res)[rownames(res) %in% rownames(filtered_res)]</p>
+<p><br></p>
+<p># Print *** top features</p>
+<p>print(top_features)</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>DotPlot(</p>
+<p>&nbsp; seu.filtered,</p>
+<p>&nbsp; top_features,</p>
+<p>&nbsp; ***** = NULL,</p>
+<p>&nbsp; cols = c(&quot;lightgrey&quot;, &quot;blue&quot;),</p>
+<p>&nbsp; col.min = -2.5,</p>
+<p>&nbsp; col.*** = 2.5,</p>
+<p>&nbsp; dot.*** = 0,</p>
+<p>&nbsp; dot.scale = 6,</p>
+<p>&nbsp; idents = NULL,</p>
+<p>&nbsp; group.** = NULL,</p>
+<p>&nbsp; split.by = NULL,</p>
+<p>&nbsp; cluster.****** = FALSE,</p>
+<p>&nbsp; scale = TRUE,</p>
+<p>&nbsp; scale.by = &quot;radius&quot;,</p>
+<p>&nbsp; scale.min = NA,</p>
+<p>&nbsp; scale.*** = NA</p>
+<p>) + theme(axis.text.x = element_text(angle = 90, hjust = 1 , **** = 5))</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>sig_list_bulk &lt;- res_df %&gt;%</p>
+<p>&nbsp; filter(**** &lt; 0.05 &amp; log2FoldChange &gt; 2) %&gt;%</p>
+<p>&nbsp; row.names</p>
+<p><br></p>
+<p>print(paste0(&apos;significant biomarkers in bulk: &apos;,length(sig_list_bulk)))</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(ggVennDiagram)</p>
+<p><br></p>
+<p># Create a list ** sets</p>
+<p>sets &lt;- list(</p>
+<p>&nbsp; &nbsp; ****** = sig_list_wilcox,</p>
+<p>&nbsp; &nbsp; bimod &nbsp;= sig_list_bimod,</p>
+<p>&nbsp; &nbsp; t &nbsp; &nbsp; &nbsp;= sig_list_t,</p>
+<p>&nbsp; &nbsp; LR &nbsp; &nbsp; = sig_list_LR,</p>
+<p>&nbsp; &nbsp; MAST &nbsp; = sig_list_MAST,</p>
+<p>&nbsp; &nbsp; DESeq2 = sig_list_DESeq2,</p>
+<p>&nbsp; &nbsp; bulk &nbsp; = sig_list_bulk</p>
+<p>)</p>
+<p><br></p>
+<p># **** *** **** diagram **** enhanced aesthetics</p>
+<p>venn_plot &lt;- ggVennDiagram(sets) +&nbsp;</p>
+<p>&nbsp; scale_fill_gradient(low = &quot;white&quot;, high = &quot;#0073C2FF&quot;) + &nbsp;# Adjust fill gradient</p>
+<p>&nbsp; labs(title = &quot;**** Overlap ****** ********* methods with bulk DEGs&quot;) +</p>
+<p>&nbsp; theme_minimal(base_size = 14) +</p>
+<p>&nbsp; theme(</p>
+<p>&nbsp; &nbsp; plot.title = element_text(size = 20, face = &quot;bold&quot;, ***** = 0.5), &nbsp;# ****** title</p>
+<p>&nbsp; &nbsp; legend.position = &quot;right&quot;, &nbsp;# Move legend to the right</p>
+<p>&nbsp; &nbsp; legend.title = element_text(**** = 16),</p>
+<p>&nbsp; &nbsp; legend.text = element_text(size = 14),</p>
+<p>&nbsp; &nbsp; text = element_text(**** = 14)</p>
+<p>&nbsp; )</p>
+<p><br></p>
+<p>venn_plot</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>common_genes_with_bulk &lt;- Reduce(intersect, rownames(sig_genes_list) , sig_list_bulk)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>names(res_df) &lt;- paste0(names(res_df), &quot;.bulk&quot;)</p>
+<p>res_df$gene &lt;- rownames(res_df)</p>
+<p><br></p>
+<p>names(DEGs_bimod) &lt;- paste0(names(DEGs_bimod), &quot;.bimod&quot;)</p>
+<p>DEGs_bimod$gene &lt;- rownames(DEGs_bimod)</p>
+<p><br></p>
+<p>names(DEGs_DESeq2) &lt;- paste0(names(DEGs_DESeq2), &quot;.DESeq2&quot;)</p>
+<p>DEGs_DESeq2$gene &lt;- rownames(DEGs_DESeq2)</p>
+<p><br></p>
+<p>names(DEGs_LR) &lt;- paste0(names(DEGs_LR), &quot;.LR&quot;)</p>
+<p>DEGs_LR$**** &lt;- rownames(DEGs_LR)</p>
+<p><br></p>
+<p>names(DEGs_MAST) &lt;- paste0(names(DEGs_MAST), &quot;.MAST&quot;)</p>
+<p>DEGs_MAST$gene &lt;- rownames(DEGs_MAST)</p>
+<p><br></p>
+<p>names(DEGs_t) &lt;- paste0(names(DEGs_t), &quot;.t&quot;)</p>
+<p>DEGs_t$gene &lt;- rownames(DEGs_t)</p>
+<p><br></p>
+<p>names(DEGs_wilcox) &lt;- paste0(names(DEGs_wilcox), &quot;.wilcox&quot;)</p>
+<p>DEGs_wilcox$gene &lt;- rownames(DEGs_wilcox)</p>
+<p><br></p>
+<p>merge_dat &lt;- Reduce(function(x, y) merge(x, y, by = &quot;gene&quot;),&nbsp;</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; list(DEGs_DESeq2, DEGs_bimod, DEGs_LR, DEGs_MAST, DEGs_t, DEGs_wilcox, res_df))</p>
+<p>merge_dat &lt;- merge_dat[order(merge_dat$pvalue.bulk), ]</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>Idents(seu.filtered) &lt;- &quot;celltype.cnd&quot;</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>print(merge_dat[merge_dat$gene%in%common_genes[1:2],c(&apos;gene&apos;,&apos;p_val_adj.DESeq2&apos;,&apos;p_val_adj.MAST&apos;)])</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, features = common_genes[1:2], idents = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;stim&quot;)&nbsp;</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, ******** = common_genes_with_bulk[1:2], idents = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;samples&quot;, ncol = 1)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p># ****** *** ***** with padj &lt; 0.05 ** the specific ****** *** padj &gt; 0.05 ** all other methods</p>
+<p>only_wilcox &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.bulk &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.**** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.wilcox &lt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_bimod &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.bulk &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.LR &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.MAST &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.wilcox &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_DESeq2 &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.**** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.MAST &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.****** &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_** &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.bulk &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.LR &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.MAST &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.****** &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_MAST &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.bulk &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.LR &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.**** &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.****** &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_t &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.bulk &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.LR &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.**** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.wilcox &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p>only_bulk &lt;- merge_dat$gene[which(</p>
+<p>&nbsp; merge_dat$padj.**** &lt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.bimod &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.DESeq2 &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.t &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.LR &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.**** &gt; 0.05 &amp;</p>
+<p>&nbsp; merge_dat$p_val_adj.wilcox &gt; 0.05</p>
+<p>)]</p>
+<p><br></p>
+<p># Create a list of filtered genes</p>
+<p>exclusive_genes_**** &lt;- list(</p>
+<p>&nbsp; &quot;Wilcox&quot; = only_wilcox,</p>
+<p>&nbsp; &quot;Bimod&quot; = only_bimod,</p>
+<p>&nbsp; &quot;DESeq2&quot; = only_DESeq2,</p>
+<p>&nbsp; &quot;LR&quot; = only_LR,</p>
+<p>&nbsp; &quot;MAST&quot; = only_MAST,</p>
+<p>&nbsp; &quot;T&quot; = only_t,</p>
+<p>&nbsp; &quot;bulk&quot; = only_bulk</p>
+<p>)</p>
+<p><br></p>
+<p># Print the number of filtered genes *** each method</p>
+<p>sapply(exclusive_genes_list, length)</p>
+<p><br></p>
+<p>```</p>
+<p>```{r}</p>
+<p>head(exclusive_genes_list)</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>print(merge_dat[merge_dat$gene%in%c(&apos;CLTA&apos;,&apos;CAPG&apos;),c(&apos;gene&apos;,&apos;p_val_adj.MAST&apos;,&quot;p_val_adj.DESeq2&quot;, &quot;p_val_adj.bimod&quot;, &quot;p_val_adj.LR&quot;,&quot;p_val_adj.t&quot;, &quot;p_val_adj.wilcox&quot; ,&apos;padj.bulk&apos;)])</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, ******** &lt;- c(&apos;CLTA&apos;,&apos;CAPG&apos;), idents = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;stim&quot;)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, features &lt;- c(&apos;CLTA&apos;,&apos;CAPG&apos;), idents = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;samples&quot;, ncol = 1)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>GRHPR is **** expressed ** LR method</p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, ******** &lt;- c(&apos;GRHPR&apos;), ****** = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;samples&quot;, ncol = 1)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p>COPS7A ** Only expressed in ***** method</p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, features &lt;- c(&apos;COPS7A&apos;), idents = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;samples&quot;, ncol = 1)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>&nbsp; &nbsp; top_50_common &nbsp; &nbsp;&lt;- merge_dat[merge_dat[ , 1] %in% common_genes_with_bulk , ]</p>
+<p>&nbsp; &nbsp; top_50_****** &nbsp; &nbsp;&lt;- top_50_common[1:50, ]</p>
+<p><br></p>
+<p>top_genes_common_mat &lt;- counts_CD14_Monocytes[ rownames(counts_CD14_Monocytes) %in% top_50_common$gene , ]</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>library(ComplexHeatmap)</p>
+<p>set.seed(16863)</p>
+<p>mycolors= rep(&quot;navy&quot;,dim(colData)[1])</p>
+<p>mycolors[which(colData==&quot;stimulated&quot;)]=&quot;green&quot;</p>
+<p><br></p>
+<p>column_** = HeatmapAnnotation(Sample_type= colData$condition)</p>
+<p>Heatmap(top_genes_common_mat, **** = &quot;top&quot;, top_annotation = column_ha)</p>
+<p>Heatmap(top_genes_common_mat, name = &quot;top&quot;, top_********** = column_ha, row_names_gp = gpar(fontsize = 5), column_names_gp = gpar(fontsize = 5, mycolors))</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p>```{r}</p>
+<p>DotPlot(</p>
+<p>&nbsp; seu.filtered,</p>
+<p>&nbsp; common_genes_with_bulk,</p>
+<p>&nbsp; assay = NULL,</p>
+<p>&nbsp; **** = c(&quot;lightgrey&quot;, &quot;blue&quot;),</p>
+<p>&nbsp; col.*** = -2.5,</p>
+<p>&nbsp; col.*** = 2.5,</p>
+<p>&nbsp; dot.*** = 0,</p>
+<p>&nbsp; dot.scale = 6,</p>
+<p>&nbsp; idents = NULL,</p>
+<p>&nbsp; group.by = NULL,</p>
+<p>&nbsp; split.by = NULL,</p>
+<p>&nbsp; cluster.idents = FALSE,</p>
+<p>&nbsp; ***** = TRUE,</p>
+<p>&nbsp; scale.** = &quot;radius&quot;,</p>
+<p>&nbsp; scale.min = NA,</p>
+<p>&nbsp; scale.max = NA</p>
+<p>) + theme(axis.text.x = element_text(***** = 90, hjust = 1 , size = 5))</p>
+<p><br></p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>print(merge_dat[merge_dat$gene%in%c(&apos;CCL8&apos; ,&apos;ISG15&apos; , &apos;IFI6&apos; ),c(&apos;gene&apos;,&apos;p_val_adj.MAST&apos;,&quot;p_val_adj.DESeq2&quot;, &quot;p_val_adj.bimod&quot;, &quot;p_val_adj.LR&quot;,&quot;p_val_adj.t&quot;, &quot;p_val_adj.wilcox&quot; ,&apos;padj.bulk&apos;)])</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p><br></p>
+<p>FeaturePlot(seu.filtered, ******** = c(&quot;CCL8&quot; ,&apos;ISG15&apos; , &apos;IFI6&apos;) , label = T )</p>
+<p><br></p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<p>VlnPlot(seu.filtered, features &lt;- c(&apos;CCL8&apos; ,&apos;ISG15&apos; ,&apos;IFI6&apos;), ****** = c(&quot;CD14+ Monocytes_stim&quot;, &quot;CD14+ Monocytes_ctrl&quot;), group.by = &quot;samples&quot;, ncol = 1)&nbsp;</p>
+<p>```</p>
+<p><br></p>
+<p><br></p>
+<p>```{r}</p>
+<div style="color: red; font-size: 12px; width: 600px; margin: 0 auto; text-align: center;">Created with <a href="https://wordtohtml.net/">WordToHTML.net</a> trial.</div>
